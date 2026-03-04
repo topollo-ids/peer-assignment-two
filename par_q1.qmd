@@ -1,0 +1,32 @@
+---
+title: "Question 1"
+---
+
+In this question we generate a random sample from an exponential distribution with a mean of 1 using a `foreach` loop repeated a 100 times.
+
+```{r}
+#| message: false
+#| warning: false
+#| include: false
+library(foreach)
+```
+
+```{r}
+mean_variance <- function(x){
+  c(mean(x), var(x))
+}
+
+set.seed(2025)
+results <- foreach(i = 1:100, .combine = rbind) %do% {
+  samples <- rexp(5000, rate = 1)
+  mean_variance(samples)  # Fixed variable name
+}
+
+# Add column names for clarity
+colnames(results) <- c("Mean", "Variance")
+head(results)
+
+# Check results
+cat("Average of means:", mean(results[,1]), "(true mean = 1)\n")
+cat("Average of variances:", mean(results[,2]), "(true variance = 1)\n")
+```

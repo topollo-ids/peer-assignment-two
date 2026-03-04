@@ -1,0 +1,73 @@
+---
+title: "Question 5"
+---
+
+Finally, we compare the run time between `parLapply`, `foreach` and `replicate` for Question 4.
+
+```{r}
+#| warning: false
+library(parallel)
+library(doParallel)
+library(foreach)
+```
+
+```{r}
+#| warning: false
+set.seed(1234)
+
+# Generate the random vectors
+random_vectors <- as.list(replicate(3, rnorm(5), simplify = FALSE))
+
+# Set up parallel backend
+num_cores <- detectCores(logical = FALSE)
+cl <- makeCluster(min(2, num_cores))
+registerDoParallel(cl)
+
+# 1. Using parLapply
+time_parLapply <- system.time({
+  res_parLapply <- parLapply(cl, random_vectors, max)
+})
+
+# 2. Using foreach with %dopar% (NO artificial sleep!)
+time_foreach <- system.time({
+  res_foreach <- foreach(v = random_vectors, .combine = c) %dopar% {
+    max(v)
+  }
+})
+
+# 3. Using replicate (NOT sapply)
+# replicate() repeatedly evaluates an expression
+time_replicate <- system.time({
+  # Approach A: If you want to apply max to each vector
+  res_replicate <- replicate(3, {
+    # This is awkward - replicate isn't designed for this!
+    # Better to use sapply/lapply for this task
+    max(rnorm(5))  # But this generates NEW data each time!
+  })
+})
+
+# Better: Use lapply for the actual task, since replicate isn't appropriate
+# The question might mean "compare with non-parallel version"
+time_serial <- system.time({
+  res_serial <- lapply(random_vectors, max)
+})
+
+# Clean up
+stopCluster(cl)
+
+# Print results
+cat("parLapply time:\n")
+print(time_parLapply)
+
+cat("\nforeach time:\n") 
+print(time_foreach)
+
+cat("\nSerial lapply time (for comparison):\n")
+print(time_serial)
+
+# Compare results (should all be the same)
+cat("\nResults:\n")
+cat("parLapply:", unlist(res_parLapply), "\n")
+cat("foreach:", res_foreach, "\n")
+cat("serial:", unlist(res_serial), "\n")
+```

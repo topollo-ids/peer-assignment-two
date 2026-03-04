@@ -1,0 +1,49 @@
+---
+title: "Question 3"
+---
+
+We now turn to estimating the coverage of a percentile bootstrap confidence interval for a sample size of 50 sampled from an exponential distribution of mean 1.
+
+```{r}
+library(boot)
+```
+
+```{r}
+
+set.seed(2025)  # For reproducibility
+
+true_mean <- 1
+n <- 50              # Sample size
+B <- 1000            # Number of bootstrap resamples
+n_sim <- 1000        # Number of simulations to check coverage
+
+# Bootstrap function
+boot_mean <- function(data, indices) {
+  mean(data[indices])
+}
+
+# Track coverage
+cover <- 0
+
+for (i in 1:n_sim) {
+  # Generate fresh sample from Exponential(1)
+  sample_data <- rexp(n, rate = 1)
+  
+  # Perform bootstrap
+  boot_result <- boot(sample_data, boot_mean, R = B)
+  
+  # Get percentile bootstrap CI
+  ci <- boot.ci(boot_result, type = "perc")$percent[4:5]
+  
+  # Check if true mean is in CI
+  if (!is.null(ci) && true_mean >= ci[1] && true_mean <= ci[2]) {
+    cover <- cover + 1
+  }
+}
+
+# Calculate coverage probability
+coverage_prob <- cover / n_sim
+cat("Coverage probability:", coverage_prob, "\n")
+cat("Expected 95% CI coverage: 0.95\n")
+cat("Difference:", abs(coverage_prob - 0.95))
+```

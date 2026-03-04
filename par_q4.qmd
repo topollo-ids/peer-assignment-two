@@ -1,0 +1,34 @@
+---
+title: "Question 4"
+---
+
+We utilise the `foreach` and `inorm` functions to iterate over 3 vectors, each containing 5 random variables, additionally, we find the largest value in each vector and print out these large values.
+
+```{r}
+#| warning: false
+library(foreach)
+library(doParallel)
+library(iterators)
+
+```
+
+```{r}
+#| warning: false
+set.seed(1234)
+
+# Set up parallel backend
+cl <- makeCluster(2)  # even though the question doesn't specify, 2 is a safe value to use
+registerDoParallel(cl)
+
+# Iterate over 3 vectors, each with 5 random normals
+# Find the largest value in each vector
+result <- foreach(x = irnorm(5, count = 3), .combine = c) %dopar% {
+  max(x)
+}
+
+# Clean up
+stopCluster(cl)
+
+# Print the largest values
+print(result)
+```

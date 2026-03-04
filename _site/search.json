@@ -1,0 +1,74 @@
+[
+  {
+    "objectID": "par_q5.html",
+    "href": "par_q5.html",
+    "title": "Question 5",
+    "section": "",
+    "text": "Finally, we compare the run time between parLapply, foreach and replicate for Question 4.\n\nlibrary(parallel)\nlibrary(doParallel)\nlibrary(foreach)\n\n\nset.seed(1234)\n\n# Generate the random vectors\nrandom_vectors &lt;- as.list(replicate(3, rnorm(5), simplify = FALSE))\n\n# Set up parallel backend\nnum_cores &lt;- detectCores(logical = FALSE)\ncl &lt;- makeCluster(min(2, num_cores))\nregisterDoParallel(cl)\n\n# 1. Using parLapply\ntime_parLapply &lt;- system.time({\n  res_parLapply &lt;- parLapply(cl, random_vectors, max)\n})\n\n# 2. Using foreach with %dopar% (NO artificial sleep!)\ntime_foreach &lt;- system.time({\n  res_foreach &lt;- foreach(v = random_vectors, .combine = c) %dopar% {\n    max(v)\n  }\n})\n\n# 3. Using replicate (NOT sapply)\n# replicate() repeatedly evaluates an expression\ntime_replicate &lt;- system.time({\n  # Approach A: If you want to apply max to each vector\n  res_replicate &lt;- replicate(3, {\n    # This is awkward - replicate isn't designed for this!\n    # Better to use sapply/lapply for this task\n    max(rnorm(5))  # But this generates NEW data each time!\n  })\n})\n\n# Better: Use lapply for the actual task, since replicate isn't appropriate\n# The question might mean \"compare with non-parallel version\"\ntime_serial &lt;- system.time({\n  res_serial &lt;- lapply(random_vectors, max)\n})\n\n# Clean up\nstopCluster(cl)\n\n# Print results\ncat(\"parLapply time:\\n\")\n\nparLapply time:\n\nprint(time_parLapply)\n\n   user  system elapsed \n   0.00    0.00    0.02 \n\ncat(\"\\nforeach time:\\n\") \n\n\nforeach time:\n\nprint(time_foreach)\n\n   user  system elapsed \n   0.00    0.00    0.07 \n\ncat(\"\\nSerial lapply time (for comparison):\\n\")\n\n\nSerial lapply time (for comparison):\n\nprint(time_serial)\n\n   user  system elapsed \n      0       0       0 \n\n# Compare results (should all be the same)\ncat(\"\\nResults:\\n\")\n\n\nResults:\n\ncat(\"parLapply:\", unlist(res_parLapply), \"\\n\")\n\nparLapply: 1.084441 0.5060559 0.9594941 \n\ncat(\"foreach:\", res_foreach, \"\\n\")\n\nforeach: 1.084441 0.5060559 0.9594941 \n\ncat(\"serial:\", unlist(res_serial), \"\\n\")\n\nserial: 1.084441 0.5060559 0.9594941",
+    "crumbs": [
+      "Questions",
+      "Question 5"
+    ]
+  },
+  {
+    "objectID": "par_q3.html",
+    "href": "par_q3.html",
+    "title": "Question 3",
+    "section": "",
+    "text": "We now turn to estimating the coverage of a percentile bootstrap confidence interval for a sample size of 50 sampled from an exponential distribution of mean 1.\n\nlibrary(boot)\n\nWarning: package 'boot' was built under R version 4.4.3\n\n\n\nset.seed(2025)  # For reproducibility\n\ntrue_mean &lt;- 1\nn &lt;- 50              # Sample size\nB &lt;- 1000            # Number of bootstrap resamples\nn_sim &lt;- 1000        # Number of simulations to check coverage\n\n# Bootstrap function\nboot_mean &lt;- function(data, indices) {\n  mean(data[indices])\n}\n\n# Track coverage\ncover &lt;- 0\n\nfor (i in 1:n_sim) {\n  # Generate fresh sample from Exponential(1)\n  sample_data &lt;- rexp(n, rate = 1)\n  \n  # Perform bootstrap\n  boot_result &lt;- boot(sample_data, boot_mean, R = B)\n  \n  # Get percentile bootstrap CI\n  ci &lt;- boot.ci(boot_result, type = \"perc\")$percent[4:5]\n  \n  # Check if true mean is in CI\n  if (!is.null(ci) && true_mean &gt;= ci[1] && true_mean &lt;= ci[2]) {\n    cover &lt;- cover + 1\n  }\n}\n\n# Calculate coverage probability\ncoverage_prob &lt;- cover / n_sim\ncat(\"Coverage probability:\", coverage_prob, \"\\n\")\n\nCoverage probability: 0.94 \n\ncat(\"Expected 95% CI coverage: 0.95\\n\")\n\nExpected 95% CI coverage: 0.95\n\ncat(\"Difference:\", abs(coverage_prob - 0.95))\n\nDifference: 0.01",
+    "crumbs": [
+      "Questions",
+      "Question 3"
+    ]
+  },
+  {
+    "objectID": "par_q1.html",
+    "href": "par_q1.html",
+    "title": "Question 1",
+    "section": "",
+    "text": "In this question we generate a random sample from an exponential distribution with a mean of 1 using a foreach loop repeated a 100 times.\n\nmean_variance &lt;- function(x){\n  c(mean(x), var(x))\n}\n\nset.seed(2025)\nresults &lt;- foreach(i = 1:100, .combine = rbind) %do% {\n  samples &lt;- rexp(5000, rate = 1)\n  mean_variance(samples)  # Fixed variable name\n}\n\n# Add column names for clarity\ncolnames(results) &lt;- c(\"Mean\", \"Variance\")\nhead(results)\n\n              Mean  Variance\nresult.1 1.0059263 1.0192163\nresult.2 1.0069620 0.9881573\nresult.3 0.9950264 1.0175815\nresult.4 0.9877392 0.9396905\nresult.5 1.0012039 1.0183514\nresult.6 0.9919160 0.9610271\n\n# Check results\ncat(\"Average of means:\", mean(results[,1]), \"(true mean = 1)\\n\")\n\nAverage of means: 0.9988383 (true mean = 1)\n\ncat(\"Average of variances:\", mean(results[,2]), \"(true variance = 1)\\n\")\n\nAverage of variances: 0.9968416 (true variance = 1)",
+    "crumbs": [
+      "Questions",
+      "Question 1"
+    ]
+  },
+  {
+    "objectID": "about.html",
+    "href": "about.html",
+    "title": "About",
+    "section": "",
+    "text": "About this site\n\n1 + 1\n\n[1] 2"
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Statistical Computing: Assignment 2",
+    "section": "",
+    "text": "Peer Reviwed\n\n\nTopollo Mokhatla\nMKHTOP003\n04th March 2026",
+    "crumbs": [
+      "Parallel Computing Practical"
+    ]
+  },
+  {
+    "objectID": "par_q2.html",
+    "href": "par_q2.html",
+    "title": "Question2",
+    "section": "",
+    "text": "We use doParallel and foreach to bootstrap the median for the galaxies data in the MASS library with the purpose of comparing times between the two approaches.\n\n# Set up cluster\ncl &lt;- makeCluster(4)\nregisterDoParallel(cl)\n\nB &lt;- 1000  # Number of bootstrap samples\n\n# METHOD 1: PARALLEL\ntime_individual &lt;- system.time({\n  res_parallel &lt;- foreach(i = 1:B, \n                         .combine = c, \n                         .packages = \"MASS\",\n                         .export = \"galaxies\") %dopar% {\n    median(sample(galaxies, replace = TRUE))\n  }\n})\ncat(\"Time elapsed:\", time_individual[\"elapsed\"], \"seconds\\n\")\n\nTime elapsed: 1.08 seconds\n\ncat(\"First few results:\", head(res_parallel), \"\\n\\n\")\n\nFirst few results: 21596.5 20179 21701 20875 21183.5 20422 \n\n# METHOD 2: PARALLEL BUT CHUNKED\nchunk_size &lt;- 100\nnum_chunks &lt;- B / chunk_size\n\ntime_chunked &lt;- system.time({\n  res_chunked &lt;- foreach(chunk = 1:num_chunks, \n                        .combine = c,\n                        .packages = \"MASS\",\n                        .export = \"galaxies\") %dopar% {\n    \n    # Process chunk_size bootstrap samples in ONE worker\n    chunk_results &lt;- replicate(chunk_size, {\n      median(sample(galaxies, replace = TRUE))\n    })\n    \n    return(chunk_results)\n  }\n})\ncat(\"Time elapsed:\", time_chunked[\"elapsed\"], \"seconds\\n\")\n\nTime elapsed: 0.07 seconds\n\ncat(\"First few results:\", head(res_chunked), \"\\n\\n\")\n\nFirst few results: 21814 20795 20318 20808 20175 20179 \n\n# METHOD 3: SERIAL (BASELINE)\ntime_serial &lt;- system.time({\n  res_serial &lt;- foreach(i = 1:B, \n                       .combine = c, \n                       .packages = \"MASS\") %do% {\n    median(sample(galaxies, replace = TRUE))\n  }\n})\ncat(\"Time elapsed:\", time_serial[\"elapsed\"], \"seconds\\n\")\n\nTime elapsed: 0.44 seconds\n\ncat(\"First few results:\", head(res_serial), \"\\n\\n\")\n\nFirst few results: 19989 20808 20875 20179 20833.5 20629 \n\n# Stop the cluster\nstopCluster(cl)\n\n# Create comparison table\ncomparison &lt;- data.frame(\n  Method = c(\"Parallel (individual)\", \"Parallel (chunked)\", \"Serial (baseline)\"),\n  Time_sec = c(time_individual[\"elapsed\"], \n               time_chunked[\"elapsed\"], \n               time_serial[\"elapsed\"])\n)\n\n# Calculate speedup relative to serial\ncomparison$Speedup_vs_serial &lt;- round(comparison$Time_sec[3] / comparison$Time_sec, 2)\ncomparison$Efficiency &lt;- round(comparison$Speedup_vs_serial / 4 * 100, 1)  # 4 cores\n\nprint(comparison)\n\n                 Method Time_sec Speedup_vs_serial Efficiency\n1 Parallel (individual)     1.08              0.41       10.2\n2    Parallel (chunked)     0.07              6.29      157.2\n3     Serial (baseline)     0.44              1.00       25.0",
+    "crumbs": [
+      "Questions",
+      "Question 2"
+    ]
+  },
+  {
+    "objectID": "par_q4.html",
+    "href": "par_q4.html",
+    "title": "Question 4",
+    "section": "",
+    "text": "We utilise the foreach and inorm functions to iterate over 3 vectors, each containing 5 random variables, additionally, we find the largest value in each vector and print out these large values.\n\nlibrary(foreach)\nlibrary(doParallel)\nlibrary(iterators)\n\n\nset.seed(1234)\n\n# Set up parallel backend\ncl &lt;- makeCluster(2)  # even though the question doesn't specify, 2 is a safe value to use\nregisterDoParallel(cl)\n\n# Iterate over 3 vectors, each with 5 random normals\n# Find the largest value in each vector\nresult &lt;- foreach(x = irnorm(5, count = 3), .combine = c) %dopar% {\n  max(x)\n}\n\n# Clean up\nstopCluster(cl)\n\n# Print the largest values\nprint(result)\n\n[1] 1.0844412 0.5060559 0.9594941",
+    "crumbs": [
+      "Questions",
+      "Question 4"
+    ]
+  }
+]

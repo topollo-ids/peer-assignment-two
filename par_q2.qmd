@@ -1,0 +1,89 @@
+---
+title: "Question2"
+---
+
+```{r}
+#| message: false
+#| warning: false
+#| include: false
+library(doParallel)
+library(foreach)
+library(MASS)
+data("galaxies")
+```
+
+We use `doParallel` and `foreach` to bootstrap the median for the galaxies data in the MASS library with the purpose of comparing times between the two approaches.
+
+```{r}
+#| message: false
+#| warning: false
+
+# Set up cluster
+cl <- makeCluster(4)
+registerDoParallel(cl)
+
+B <- 1000  # Number of bootstrap samples
+
+# METHOD 1: PARALLEL
+time_individual <- system.time({
+  res_parallel <- foreach(i = 1:B, 
+                         .combine = c, 
+                         .packages = "MASS",
+                         .export = "galaxies") %dopar% {
+    median(sample(galaxies, replace = TRUE))
+  }
+})
+cat("Time elapsed:", time_individual["elapsed"], "seconds\n")
+cat("First few results:", head(res_parallel), "\n\n")
+
+# METHOD 2: PARALLEL BUT CHUNKED
+chunk_size <- 100
+num_chunks <- B / chunk_size
+
+time_chunked <- system.time({
+  res_chunked <- foreach(chunk = 1:num_chunks, 
+                        .combine = c,
+                        .packages = "MASS",
+                        .export = "galaxies") %dopar% {
+    
+    # Process chunk_size bootstrap samples in ONE worker
+    chunk_results <- replicate(chunk_size, {
+      median(sample(galaxies, replace = TRUE))
+    })
+    
+    return(chunk_results)
+  }
+})
+cat("Time elapsed:", time_chunked["elapsed"], "seconds\n")
+cat("First few results:", head(res_chunked), "\n\n")
+
+# METHOD 3: SERIAL (BASELINE)
+time_serial <- system.time({
+  res_serial <- foreach(i = 1:B, 
+                       .combine = c, 
+                       .packages = "MASS") %do% {
+    median(sample(galaxies, replace = TRUE))
+  }
+})
+cat("Time elapsed:", time_serial["elapsed"], "seconds\n")
+cat("First few results:", head(res_serial), "\n\n")
+
+# Stop the cluster
+stopCluster(cl)
+
+# Create comparison table
+comparison <- data.frame(
+  Method = c("Parallel (individual)", "Parallel (chunked)", "Serial (baseline)"),
+  Time_sec = c(time_individual["elapsed"], 
+               time_chunked["elapsed"], 
+               time_serial["elapsed"])
+)
+
+# Calculate speedup relative to serial
+comparison$Speedup_vs_serial <- round(comparison$Time_sec[3] / comparison$Time_sec, 2)
+comparison$Efficiency <- round(comparison$Speedup_vs_serial / 4 * 100, 1)  # 4 cores
+
+print(comparison)
+
+
+```
